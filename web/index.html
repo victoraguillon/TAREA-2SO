@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio de concurrencia y memoria</title>
+<link rel="stylesheet" href="/estilos.css">
+</head>
+<body>
+<header class="cabecera">
+  <div class="titulo">
+    <h1>Laboratorio de concurrencia y memoria</h1>
+    <p class="subtitulo">Sistemas Operativos — observación de VA, RSS, swap, fallos de página y CPU</p>
+  </div>
+  <div class="sistema" id="sistemaInfo">Cargando datos del sistema…</div>
+</header>
+
+<nav class="pestanas" id="pestanas">
+  <button class="pestana activa" data-pestana="configurar">Configurar</button>
+  <button class="pestana" data-pestana="vivo">En vivo</button>
+  <button class="pestana" data-pestana="resultados">Resultados</button>
+  <button class="pestana" data-pestana="comparar">Comparar</button>
+  <button class="pestana" data-pestana="capacidades">Capacidades</button>
+  <button class="pestana" data-pestana="ayuda">Ayuda</button>
+</nav>
+
+<div class="mensaje" id="mensaje" hidden></div>
+
+<main>
+
+  <section class="vista activa" id="vista-configurar">
+    <div class="panel">
+      <h2>Configuración de la corrida</h2>
+
+      <div class="fila">
+        <label for="selEscenario">Escenario</label>
+        <select id="selEscenario">
+          <option value="">personalizado</option>
+        </select>
+        <span class="ayuda-campo">Precarga los parámetros de una de las cuatro pruebas.</span>
+      </div>
+
+      <div class="nota" id="notaEscenario" hidden></div>
+
+      <div class="variantes" id="variantesEscenario" hidden></div>
+
+      <div class="grilla-formulario">
+        <div class="campo">
+          <label for="selCarga">Carga</label>
+          <select id="selCarga">
+            <option value="memoria">memoria</option>
+            <option value="sincronizacion">sincronización</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="selModelo">Modelo de hilos</label>
+          <select id="selModelo">
+            <option value="nativos">nativos (1:1)</option>
+            <option value="tareas">tareas (cooperativas)</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="inpHilos">Hilos / tareas</label>
+          <input id="inpHilos" type="number" min="1" max="32" value="1">
+        </div>
+
+        <div class="campo" data-solo="memoria">
+          <label for="inpMemoria">Memoria (MB)</label>
+          <input id="inpMemoria" type="number" min="1" max="4096" value="128">
+        </div>
+
+        <div class="campo" data-solo="memoria">
+          <label for="inpPasadas">Pasadas</label>
+          <input id="inpPasadas" type="number" min="1" max="1000" value="20">
+        </div>
+
+        <div class="campo" data-solo="memoria">
+          <label for="selModoFin">Modo de fin</label>
+          <select id="selModoFin">
+            <option value="pasadas">por pasadas</option>
+            <option value="duracion">por duración</option>
+          </select>
+        </div>
+
+        <div class="campo" data-solo="memoria" id="campoDuracion">
+          <label for="inpDuracion">Duración (s)</label>
+          <input id="inpDuracion" type="number" min="1" max="180" value="5">
+        </div>
+
+        <div class="campo" data-solo="sincronizacion">
+          <label for="selSincronizacion">Sincronización</label>
+          <select id="selSincronizacion">
+            <option value="ninguna">ninguna (carrera)</option>
+            <option value="mutex">mutex</option>
+            <option value="atomico">atómico</option>
+          </select>
+        </div>
+
+        <div class="campo" data-solo="sincronizacion">
+          <label for="inpIteraciones">Iteraciones por hilo</label>
+          <input id="inpIteraciones" type="number" min="1" max="100000000" value="1000000">
+        </div>
+
+        <div class="campo">
+          <label for="inpLimiteMemoria">Límite de memoria (MB)</label>
+          <input id="inpLimiteMemoria" type="number" min="0" max="4096" step="1" value="0">
+          <span class="ayuda-campo">0 = sin límite. Se aplica con RLIMIT_AS.</span>
+        </div>
+
+        <div class="campo">
+          <label for="inpLimiteCpuSegundos">Límite de CPU (s)</label>
+          <input id="inpLimiteCpuSegundos" type="number" min="0" max="600" value="0">
+          <span class="ayuda-campo">0 = sin límite. Presupuesto total con RLIMIT_CPU.</span>
+        </div>
+
+        <div class="campo">
+          <label for="inpLimiteCpuPorcentaje">Cuota de CPU (%)</label>
+          <input id="inpLimiteCpuPorcentaje" type="number" min="1" max="100" value="100">
+          <span class="ayuda-campo">100 = sin cuota. Por debajo se aplica de forma aproximada.</span>
+        </div>
+      </div>
+
+      <div class="acciones">
+        <button class="boton primario" id="btnIniciar">Iniciar corrida</button>
+        <button class="boton" id="btnDetener" disabled>Detener</button>
+        <button class="boton" id="btnRepetir" disabled>Repetir</button>
+        <span class="estado-corrida" id="badgeEstado">inactiva</span>
+      </div>
+
+      <p class="pista">Los campos que no aplican a la carga elegida se deshabilitan solos.</p>
+    </div>
+  </section>
+
+  <section class="vista" id="vista-vivo">
+    <div class="panel">
+      <div class="encabezado-panel">
+        <h2>Corrida en curso</h2>
+        <div class="insignias">
+          <span class="insignia" id="badgeLimites">límites: sin pedir</span>
+          <span class="insignia" id="badgeId">sin corrida</span>
+        </div>
+      </div>
+
+      <div class="nota" id="notaHistorico" hidden></div>
+
+      <div class="tarjetas">
+        <div class="tarjeta"><span class="etiqueta">Duración</span><strong id="cardDuracion">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">Estado</span><strong id="cardEstado">inactiva</strong></div>
+        <div class="tarjeta"><span class="etiqueta">Memoria virtual (VA)</span><strong id="cardVa">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">RAM residente (RSS)</span><strong id="cardRss">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">Swap del proceso</span><strong id="cardSwapProc">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">Swap del sistema</span><strong id="cardSwapSistema">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">Fallos de página</span><strong id="cardFallos">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">CPU</span><strong id="cardCpu">—</strong></div>
+        <div class="tarjeta"><span class="etiqueta">Hilos del proceso</span><strong id="cardHilos">—</strong></div>
+      </div>
+
+      <div class="progreso">
+        <div class="barra"><div class="relleno" id="barraProgreso"></div></div>
+        <span id="textoProgreso">0 %</span>
+      </div>
+
+      <div class="graficos">
+        <figure class="grafico">
+          <figcaption>Memoria: VA, RSS y swap del proceso</figcaption>
+          <canvas id="graficoMemoria" height="220"></canvas>
+        </figure>
+        <figure class="grafico">
+          <figcaption>CPU (% del total de un núcleo)</figcaption>
+          <canvas id="graficoCpu" height="220"></canvas>
+        </figure>
+        <figure class="grafico">
+          <figcaption>Fallos de página acumulados</figcaption>
+          <canvas id="graficoFallos" height="220"></canvas>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="vista" id="vista-resultados">
+    <div class="panel">
+      <div class="encabezado-panel">
+        <h2>Historial de corridas</h2>
+        <div class="acciones">
+          <button class="boton" id="btnRefrescarResultados">Actualizar</button>
+          <button class="boton" id="btnComparar">Comparar seleccionadas</button>
+          <button class="boton" id="btnCsv">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tablaResultados">
+          <thead>
+            <tr>
+              <th></th>
+              <th data-orden="fecha">Fecha</th>
+              <th data-orden="estado">Estado</th>
+              <th data-orden="carga">Carga</th>
+              <th data-orden="modeloHilos">Modelo</th>
+              <th data-orden="hilos" title="En el modelo de tareas, cantidad de tareas de usuario; el proceso usa 1 hilo del SO.">Hilos/tareas</th>
+              <th data-orden="duracionMs">Duración</th>
+              <th data-orden="rssPicoKb">RSS pico</th>
+              <th data-orden="vmPicoKb">VA pico</th>
+              <th data-orden="fallosMenores">Fallos</th>
+              <th data-orden="cpuPorcentajePromedio">CPU %</th>
+              <th data-orden="limitesVerificados">Límites</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoResultados"></tbody>
+        </table>
+      </div>
+      <p class="pista" id="pistaResultados">Todavía no hay corridas guardadas.</p>
+    </div>
+  </section>
+
+  <section class="vista" id="vista-comparar">
+    <div class="panel">
+      <h2>Comparación</h2>
+      <div class="nota" id="avisoComparacion" hidden></div>
+      <div class="tabla-contenedor">
+        <table class="tabla" id="tablaComparacion">
+          <thead><tr id="cabeceraComparacion"></tr></thead>
+          <tbody id="cuerpoComparacion"></tbody>
+        </table>
+      </div>
+      <div class="barras" id="barrasComparacion"></div>
+      <p class="pista">Seleccioná dos o más corridas en la pestaña Resultados.</p>
+    </div>
+  </section>
+
+  <section class="vista" id="vista-capacidades">
+    <div class="panel">
+      <div class="encabezado-panel">
+        <h2>Mecanismos de límite disponibles</h2>
+        <button class="boton" id="btnRefrescarCapacidades">Volver a detectar</button>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Mecanismo</th>
+              <th>Nivel</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoCapacidades"></tbody>
+        </table>
+      </div>
+      <p class="pista">Un límite que no se puede aplicar se informa como no disponible: nunca se presenta como si estuviera en uso.</p>
+    </div>
+  </section>
+
+  <section class="vista" id="vista-ayuda">
+    <div class="panel ayuda">
+      <h2>Cómo leer las métricas</h2>
+
+      <h3>Memoria virtual (VA)</h3>
+      <p>Es el espacio de direcciones que el proceso reservó. Incluye páginas que todavía no fueron tocadas, así que puede ser mucho mayor que la RAM realmente usada. Se aplica con <code>mmap</code> y se limita con <code>RLIMIT_AS</code>.</p>
+
+      <h3>RAM residente (RSS)</h3>
+      <p>Son las páginas que el proceso tiene efectivamente en memoria física. Si RSS es menor que VA, la diferencia es memoria reservada pero nunca tocada: es exactamente lo que muestra el experimento.</p>
+
+      <h3>Swap del proceso y swap del sistema</h3>
+      <p>El swap del proceso son las páginas de <em>este</em> proceso que el kernel llevó a disco. El swap del sistema es el uso global. Sin presión de memoria global el swap puede quedarse en cero aunque la reserva sea grande; por eso se informan también <code>pswpin</code>/<code>pswpout</code>, que cuentan las páginas efectivamente intercambiadas durante la corrida.</p>
+
+      <h3>Fallos de página</h3>
+      <p>Un fallo menor ocurre cuando la página no estaba mapeada y el kernel la asigna sin leer disco. Uno mayor requiere I/O. Al tocar por primera vez la memoria reservada aparecen los fallos menores: son la evidencia de que la reserva se materializó en RAM.</p>
+
+      <h3>CPU</h3>
+      <p>El porcentaje puede superar 100 porque suma el tiempo de todos los hilos. La cuota por <code>SIGSTOP</code>/<code>SIGCONT</code> es <strong>aproximada</strong>: pausa el proceso entero en un período de 40 ms y no es una cuota del kernel. El presupuesto con <code>RLIMIT_CPU</code>, en cambio, es exacto y termina la corrida con <code>limite_cpu</code>.</p>
+
+      <h3>Modelos de hilos</h3>
+      <p><strong>Nativos</strong>: cada hilo es un hilo del sistema operativo (1:1), con paralelismo real. <strong>Tareas</strong>: un solo hilo del sistema y varios contextos de usuario que se ceden el control con <code>ucontext</code>; el trabajo total es el mismo, pero no hay paralelismo. En el modelo de tareas el proceso muestra <code>Threads: 1</code> y los cambios de contexto son de usuario.</p>
+
+      <h3>Límites</h3>
+      <p>Todo límite que la interfaz muestra como aplicado fue confirmado leyendo <code>/proc/&lt;pid&gt;/limits</code>. Si el kernel no lo refleja, la corrida se informa como error y no se afirma nada. La memoria se limita con <code>RLIMIT_AS</code> (espacio de direcciones) y la CPU con <code>RLIMIT_CPU</code> (segundos totales de CPU).</p>
+
+      <h3>Las cuatro pruebas</h3>
+      <ol>
+        <li><strong>Concurrencia</strong>: misma carga de memoria con 1, 2, 4 y 8 hilos. La duración debe bajar.</li>
+        <li><strong>Límite de CPU</strong>: misma carga al 100 %, 50 % y 25 %. Al 50 % se completa menos trabajo.</li>
+        <li><strong>Presión de memoria</strong>: pedir más memoria que el límite configurado. La corrida termina en <code>limite_memoria</code>.</li>
+        <li><strong>Sincronización</strong>: contador compartido sin protección pierde actualizaciones; con mutex o atómico da exacto.</li>
+      </ol>
+
+      <h3>Entorno</h3>
+      <p>El laboratorio corre en Linux (WSL2). Las comparaciones son relativas a esta misma máquina y sesión; WSL distorsiona tiempos y algunos contadores de <code>/proc</code>.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="pie">
+  <span>Los límites de cgroup no están disponibles sin privilegios y se informan como tales.</span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
