@@ -1,5 +1,6 @@
 'use strict';
 
+(() => {
     const $ = (id) => document.getElementById(id);
 
     function numero(valor, decimales) {
