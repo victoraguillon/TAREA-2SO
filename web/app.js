@@ -1,7 +1,5 @@
 'use strict';
 
-(function () {
-
     const $ = (id) => document.getElementById(id);
 
     function numero(valor, decimales) {
@@ -247,7 +245,7 @@
                 : x0);
             const yDe = (v) => y1 - (Math.min(Math.max(v, 0), tope) / tope) * altoTrazo;
 
-            ctx.font = '11px "Segoe UI", system-ui, sans-serif';
+            ctx.font = '11px "Cascadia Mono", "JetBrains Mono", Consolas, monospace';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             let leyendaX = x0;
@@ -258,7 +256,7 @@
                 ctx.moveTo(leyendaX, 10);
                 ctx.lineTo(leyendaX + 12, 10);
                 ctx.stroke();
-                ctx.fillStyle = '#98a3b3';
+                ctx.fillStyle = '#5f5e56';
                 ctx.fillText(serie.nombre, leyendaX + 16, 10);
                 leyendaX += 16 + ctx.measureText(serie.nombre).width + 14;
             }
@@ -267,12 +265,12 @@
             ctx.textAlign = 'right';
             for (let indice = 0; indice <= 4; indice += 1) {
                 const y = y1 - (altoTrazo * indice) / 4;
-                ctx.strokeStyle = indice === 0 ? '#2a3240' : '#1b2230';
+                ctx.strokeStyle = indice === 0 ? '#8d8a7e' : '#ded8c9';
                 ctx.beginPath();
                 ctx.moveTo(x0, y);
                 ctx.lineTo(x1, y);
                 ctx.stroke();
-                ctx.fillStyle = '#6b7688';
+                ctx.fillStyle = '#5f5e56';
                 ctx.fillText(this.opciones.formatearEje((tope * indice) / 4), x0 - 8, y);
             }
 
@@ -281,7 +279,7 @@
             for (let indice = 0; indice < 3; indice += 1) {
                 const t = (tMax * indice) / 2;
                 const x = x0 + (anchoTrazo * indice) / 2;
-                ctx.fillStyle = '#6b7688';
+                ctx.fillStyle = '#5f5e56';
                 ctx.fillText(numero(t, tMax < 10 ? 1 : 0) + ' s', x, y1 + 7);
             }
 
@@ -304,7 +302,7 @@
             }
 
             if (!this.puntos.length) {
-                ctx.fillStyle = '#4d5768';
+                ctx.fillStyle = '#706d64';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('Sin datos todavía', (x0 + x1) / 2, (y0 + y1) / 2);
@@ -367,19 +365,19 @@
 
     function crearGraficos() {
         graficoMemoria = new Grafico($('graficoMemoria'), [
-            { nombre: 'VA', color: '#6ea8fe' },
-            { nombre: 'RSS', color: '#3ddc97' },
-            { nombre: 'swap del proceso', color: '#f7768e' }
+            { nombre: 'VA', color: '#1f4f8f' },
+            { nombre: 'RSS', color: '#1d6b4a' },
+            { nombre: 'swap del proceso', color: '#a3231b' }
         ], { formatearEje: formatearEjeKb, minimo: 1024 });
 
         graficoCpu = new Grafico($('graficoCpu'), [
-            { nombre: 'CPU', color: '#f5b942' }
+            { nombre: 'CPU', color: '#8a5a00' }
         ], { formatearEje: (v) => numero(v, 0) + ' %', minimo: 100 });
-        graficoCpu.referencias = [{ valor: 100, etiqueta: '100 %', color: '#5b6472' }];
+        graficoCpu.referencias = [{ valor: 100, etiqueta: '100 %', color: '#8d8a7e' }];
 
         graficoFallos = new Grafico($('graficoFallos'), [
-            { nombre: 'menores', color: '#7dcfff' },
-            { nombre: 'mayores', color: '#ff9e64' }
+            { nombre: 'menores', color: '#14606b' },
+            { nombre: 'mayores', color: '#a34a00' }
         ], { formatearEje: formatearEjeNumero, minimo: 1 });
 
         graficos = [graficoMemoria, graficoCpu, graficoFallos];
@@ -457,12 +455,12 @@
     function actualizarReferenciaCpu() {
         if (!graficoCpu) return;
         const porcentaje = numeroDe('inpLimiteCpuPorcentaje', 100);
-        const referencias = [{ valor: 100, etiqueta: '100 %', color: '#5b6472' }];
+        const referencias = [{ valor: 100, etiqueta: '100 %', color: '#8d8a7e' }];
         if (porcentaje > 0 && porcentaje < 100) {
             referencias.push({
                 valor: porcentaje,
                 etiqueta: 'límite ≈ ' + numero(porcentaje, 0) + ' %',
-                color: '#f5b942'
+                color: '#a3231b'
             });
         }
         graficoCpu.referencias = referencias;
@@ -652,7 +650,6 @@
         if (ultima) {
             $('cardHilos').textContent = numero(ultima.hilos, 0);
         } else if (resultado.config) {
-
             const hilosSo = resultado.config.modeloHilos === 'tareas'
                 ? 1
                 : resultado.config.hilos;
@@ -708,7 +705,6 @@
                 sufijo = tieneCuota ? ' · RLIMIT ✓ · cuota aprox.' : ' ✓ verificados';
                 insignia.className = 'insignia verde';
             } else if (!tieneRlimit && tieneCuota && resultado.limiteCpuPorcentajeAplicado) {
-
                 sufijo = ' · aplicado (aproximado)';
                 insignia.className = 'insignia ambar';
             } else {
@@ -815,7 +811,6 @@
             try {
                 aplicarEstado(JSON.parse(evento.data));
             } catch (error) {
-
             }
         });
 
@@ -823,7 +818,6 @@
             try {
                 aplicarMuestra(JSON.parse(evento.data));
             } catch (error) {
-
             }
         });
 
@@ -831,7 +825,6 @@
             try {
                 aplicarFin(JSON.parse(evento.data));
             } catch (error) {
-
             }
         });
 
@@ -873,7 +866,6 @@
 
     function aplicarMuestra(muestra) {
         if (!muestra || typeof muestra !== 'object') return;
-
         if (estado.historico) return;
 
         agregarMuestraAGraficos(muestra);
@@ -906,7 +898,6 @@
                 actualizarBadgeLimites(resultado.config, resultado);
             })
             .catch(() => {
-
             });
     }
 
@@ -1413,7 +1404,6 @@
                 cambiarPestana('vivo');
             }
         } catch (error) {
-
         }
     }
 
