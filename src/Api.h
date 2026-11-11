@@ -5,7 +5,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-
 #include "Ejecutor.h"
 #include "Historial.h"
 #include "ServidorHttp.h"

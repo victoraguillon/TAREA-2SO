@@ -1,12 +1,10 @@
 #include "Api.h"
-
 #include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <optional>
 #include <system_error>
 #include <vector>
-
 #include <sys/socket.h>
 #include <unistd.h>
 

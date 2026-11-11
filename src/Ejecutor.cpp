@@ -8,7 +8,6 @@
 #include <deque>
 #include <system_error>
 #include <thread>
-
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/prctl.h>

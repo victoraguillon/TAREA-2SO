@@ -121,6 +121,7 @@
         sistema: null,
         corridaActiva: false,
         iniciando: false,
+        cargaBloqueada: false,
         idActual: null,
         historico: null,
         limites: null,
@@ -453,6 +454,14 @@
         $('inpDuracion').disabled = !usaDuracion;
     }
 
+    function bloquearCarga(bloquear) {
+        estado.cargaBloqueada = bloquear;
+        $('selCarga').disabled = bloquear;
+        $('campoCarga').classList.toggle('deshabilitado', bloquear);
+        const ayuda = $('ayudaCarga');
+        if (ayuda) ayuda.hidden = !bloquear;
+    }
+
     function actualizarReferenciaCpu() {
         if (!graficoCpu) return;
         const porcentaje = numeroDe('inpLimiteCpuPorcentaje', 100);
@@ -504,6 +513,7 @@
             boton.title = 'Cargar esta variante en el formulario';
             boton.addEventListener('click', () => {
                 aplicarConfig(variante.config);
+                bloquearCarga(true);
                 contenedor.querySelectorAll('.variante').forEach((otro) => {
                     otro.classList.toggle('elegida', otro === boton);
                 });
@@ -521,10 +531,12 @@
             nota.hidden = true;
             nota.innerHTML = '';
             renderVariantes(null);
+            bloquearCarga(false);
             return;
         }
 
         aplicarConfig(escenario.base);
+        bloquearCarga(true);
 
         const pasos = escenario.pasos
             .map((paso) => '<li>' + escaparHtml(paso) + '</li>')
@@ -587,6 +599,7 @@
 
         actualizarCamposPorCarga();
         actualizarReferenciaCpu();
+        bloquearCarga(false);
     }
 
     function actualizarBotones() {
