@@ -378,8 +378,9 @@ std::string Api::validarConfiguracion(const ConfiguracionCorrida& config,
         return "cantidad de hilos fuera de rango (1.." +
                std::to_string(topeHilos) + ").";
     }
-    if (config.memoriaMb < 1 || config.memoriaMb > 4096) {
-        return "memoria fuera de rango (1..4096 MB).";
+    if (config.memoriaMb < 1 || config.memoriaMb > MEMORIA_MAXIMA_MB) {
+        return "memoria fuera de rango (1.." +
+               std::to_string(MEMORIA_MAXIMA_MB) + " MB).";
     }
     if (config.pasadas < 1 || config.pasadas > 1000) {
         return "pasadas fuera de rango (1..1000).";
@@ -391,8 +392,10 @@ std::string Api::validarConfiguracion(const ConfiguracionCorrida& config,
         return "iteraciones fuera de rango (1..100000000).";
     }
     if (config.limiteMemoriaMb != 0 &&
-        (config.limiteMemoriaMb < 8 || config.limiteMemoriaMb > 4096)) {
-        return "límite de memoria fuera de rango (0 u 8..4096 MB).";
+        (config.limiteMemoriaMb < 8 ||
+         config.limiteMemoriaMb > MEMORIA_MAXIMA_MB)) {
+        return "límite de memoria fuera de rango (0 u 8.." +
+               std::to_string(MEMORIA_MAXIMA_MB) + " MB).";
     }
     if (config.limiteCpuSegundos < 0 || config.limiteCpuSegundos > 600) {
         return "límite de CPU fuera de rango (0..600 s).";
@@ -404,13 +407,15 @@ std::string Api::validarConfiguracion(const ConfiguracionCorrida& config,
     if (config.carga == ModoCarga::Memoria) {
         if (std::optional<Meminfo> memoria = leerMeminfo()) {
             if (memoria->memDisponibleKb > 0) {
-                const long topeKb = memoria->memDisponibleKb / 2;
+                const long topeKb = memoria->memDisponibleKb - MARGEN_MEMORIA_KB;
                 const long pedidoKb =
                     static_cast<long>(config.memoriaMb) * 1024L +
                     static_cast<long>(config.hilos) * 512L;
                 if (pedidoKb > topeKb) {
-                    return "memoria solicitada excede el tope de seguridad "
-                           "(50 % de la RAM disponible).";
+                    const long maximoSeguroMb = (topeKb > 0) ? topeKb / 1024 : 0;
+                    return "memoria solicitada excede el máximo seguro de " +
+                           std::to_string(maximoSeguroMb) +
+                           " MB (se reserva 1 GB para el sistema).";
                 }
             }
         }

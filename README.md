@@ -80,8 +80,8 @@ Botones principales: **Iniciar**, **Detener** (termina en menos de 3 s) y
 | `limiteCpuPorcentaje` | 1..100 | Cuota aproximada de CPU por `SIGSTOP`/`SIGCONT` |
 
 La API valida los rangos y rechaza con HTTP 400 y mensaje en español. Además, la
-memoria pedida no puede superar el 50 % de la memoria disponible del sistema,
-contando las pilas de los hilos.
+memoria pedida debe dejar al menos 1 GB libre para el sistema, contando las
+pilas de los hilos. El máximo absoluto es 4096 MB.
 
 ## 4. Qué mide cada métrica
 

@@ -26,6 +26,10 @@ enum class EstadoCorrida {
 
 enum class NivelCapacidad { Disponible, Aproximado, NoDisponible };
 
+// Tope absoluto de memoria del programa y colchón que se deja libre al sistema.
+constexpr int  MEMORIA_MAXIMA_MB = 4096;
+constexpr long MARGEN_MEMORIA_KB = 1024L * 1024L;  // 1 GiB
+
 struct ConfiguracionCorrida {
     ModoCarga           carga               = ModoCarga::Memoria;
     ModeloHilos         modeloHilos         = ModeloHilos::Nativos;

@@ -34,9 +34,7 @@
 
       <div class="fila">
         <label for="selEscenario">Escenario</label>
-        <select id="selEscenario">
-          <option value="">personalizado</option>
-        </select>
+        <select id="selEscenario"></select>
         <span class="ayuda-campo">Precarga los parámetros de una de las cuatro pruebas.</span>
       </div>
 
@@ -51,7 +49,7 @@
             <option value="memoria">memoria</option>
             <option value="sincronizacion">sincronización</option>
           </select>
-          <span class="ayuda-campo" id="ayudaCarga">Fijada por el escenario. Elige «personalizado» para cambiarla.</span>
+          <span class="ayuda-campo" id="ayudaCarga">Fijada por el escenario seleccionado.</span>
         </div>
 
         <div class="campo">
@@ -142,6 +140,16 @@
           <span class="insignia" id="badgeLimites">límites: sin pedir</span>
           <span class="insignia" id="badgeId">sin corrida</span>
         </div>
+      </div>
+
+      <div class="acciones acciones-vivo" id="accionesVivo">
+        <button class="boton primario" id="btnVivoIniciar">Iniciar</button>
+        <button class="boton peligro" id="btnVivoDetener" disabled>Detener</button>
+        <button class="boton" id="btnVivoRepetir" disabled>Repetir</button>
+        <button class="boton" id="btnVivoReiniciar" disabled>Reiniciar</button>
+        <button class="boton" id="btnVivoConfigurar">Configurar</button>
+        <button class="boton" id="btnVivoResultados">Resultados</button>
+        <span class="estado-corrida" id="badgeEstadoVivo">inactiva</span>
       </div>
 
       <div class="nota" id="notaHistorico" hidden></div>

@@ -125,6 +125,9 @@
         idActual: null,
         historico: null,
         limites: null,
+        configCorrida: null,
+        reinicioPendiente: false,
+        ultimoEstado: null,
         orden: { campo: 'fecha', ascendente: false }
     };
 
@@ -603,10 +606,46 @@
     }
 
     function actualizarBotones() {
-        $('btnIniciar').disabled = estado.corridaActiva || estado.iniciando;
-        $('btnDetener').disabled = !estado.corridaActiva;
-        $('btnRepetir').disabled = estado.corridaActiva || estado.iniciando;
+        const activa = estado.corridaActiva;
+        const ocupado = activa || estado.iniciando;
+        const historico = !!estado.historico;
+
+        $('btnIniciar').disabled = ocupado;
+        $('btnDetener').disabled = !activa;
+        $('btnRepetir').disabled = ocupado || !estado.configCorrida;
         $('btnComparar').disabled = estado.seleccionados.size < 2;
+
+        const barra = $('accionesVivo');
+        if (!barra) return;
+        barra.hidden = historico;
+
+        const puedeRepetir = !ocupado && !!estado.configCorrida;
+        $('btnVivoIniciar').disabled = ocupado || historico;
+        $('btnVivoDetener').disabled = !activa || historico;
+        $('btnVivoRepetir').disabled = !puedeRepetir || historico;
+        $('btnVivoReiniciar').disabled =
+            (!activa && !puedeRepetir) || estado.iniciando ||
+            estado.reinicioPendiente || historico;
+
+        const insignia = $('badgeEstadoVivo');
+        if (insignia) {
+            if (historico) {
+                insignia.textContent = nombreEstado(estado.historico.estado);
+                insignia.className = 'estado-corrida ' + estado.historico.estado;
+            } else if (activa) {
+                insignia.textContent = 'ejecutando';
+                insignia.className = 'estado-corrida ejecutando';
+            } else if (estado.iniciando) {
+                insignia.textContent = 'iniciando';
+                insignia.className = 'estado-corrida ejecutando';
+            } else if (estado.ultimoEstado) {
+                insignia.textContent = nombreEstado(estado.ultimoEstado);
+                insignia.className = 'estado-corrida ' + estado.ultimoEstado;
+            } else {
+                insignia.textContent = 'inactiva';
+                insignia.className = 'estado-corrida';
+            }
+        }
     }
 
     function limpiarTarjetas() {
@@ -733,11 +772,9 @@
         insignia.textContent = partes.join(' · ') + sufijo;
     }
 
-    async function iniciarCorrida() {
-        if (estado.corridaActiva || estado.iniciando) return;
-
-        const config = leerConfiguracion();
-        if (!config) return;
+    async function lanzarCorrida(config) {
+        if (estado.corridaActiva || estado.iniciando) return false;
+        if (!config) return false;
 
         estado.iniciando = true;
         actualizarBotones();
@@ -754,6 +791,8 @@
             estado.corridaActiva = true;
             estado.idActual = respuesta.id;
             estado.limites = config;
+            estado.configCorrida = Object.assign({}, config);
+            estado.ultimoEstado = 'ejecutando';
 
             limpiarGraficos();
             limpiarTarjetas();
@@ -767,23 +806,58 @@
             abrirFuente();
             cambiarPestana('vivo');
             mostrarMensaje('Corrida ' + respuesta.id + ' iniciada.', 'info');
+            return true;
         } catch (error) {
             mostrarMensaje('No se pudo iniciar la corrida: ' + error.message, 'error');
+            return false;
         } finally {
             estado.iniciando = false;
             actualizarBotones();
         }
     }
 
+    async function iniciarCorrida() {
+        if (estado.corridaActiva || estado.iniciando) return;
+
+        const config = leerConfiguracion();
+        if (!config) return;
+
+        await lanzarCorrida(config);
+    }
+
+    async function repetirCorrida() {
+        if (!estado.configCorrida) return;
+        await lanzarCorrida(estado.configCorrida);
+    }
+
+    async function reiniciarCorrida() {
+        if (estado.iniciando || estado.reinicioPendiente) return;
+        if (!estado.configCorrida) return;
+
+        if (!estado.corridaActiva) {
+            await lanzarCorrida(estado.configCorrida);
+            return;
+        }
+
+        estado.reinicioPendiente = true;
+        actualizarBotones();
+        mostrarMensaje(
+            'Reiniciando: se detiene la corrida actual y se lanza otra con la misma configuración.',
+            'aviso');
+        await detenerCorrida();
+    }
+
     async function detenerCorrida() {
         try {
             await fetchJson('/api/corrida/detener', { method: 'POST' });
-            $('btnDetener').disabled = true;
             mostrarMensaje(
                 'Detención solicitada: se envía SIGTERM al trabajador y, si no responde en 2 s, SIGKILL.',
                 'aviso');
         } catch (error) {
+            estado.reinicioPendiente = false;
             mostrarMensaje('No se pudo detener la corrida: ' + error.message, 'error');
+        } finally {
+            actualizarBotones();
         }
     }
 
@@ -802,8 +876,14 @@
 
     function configurarBotones() {
         $('btnIniciar').addEventListener('click', iniciarCorrida);
-        $('btnRepetir').addEventListener('click', iniciarCorrida);
+        $('btnRepetir').addEventListener('click', repetirCorrida);
         $('btnDetener').addEventListener('click', detenerCorrida);
+        $('btnVivoIniciar').addEventListener('click', iniciarCorrida);
+        $('btnVivoDetener').addEventListener('click', detenerCorrida);
+        $('btnVivoRepetir').addEventListener('click', repetirCorrida);
+        $('btnVivoReiniciar').addEventListener('click', reiniciarCorrida);
+        $('btnVivoConfigurar').addEventListener('click', () => cambiarPestana('configurar'));
+        $('btnVivoResultados').addEventListener('click', () => cambiarPestana('resultados'));
         $('btnRefrescarResultados').addEventListener('click', () => cargarResultados());
         $('btnComparar').addEventListener('click', compararSeleccionadas);
         $('btnCsv').addEventListener('click', exportarCsv);
@@ -850,6 +930,7 @@
         if (!nuevo || typeof nuevo !== 'object') return;
 
         if (!nuevo.activo) {
+            if (nuevo.estado) estado.ultimoEstado = nuevo.estado;
             if (estado.corridaActiva && !estado.historico) {
                 estado.corridaActiva = false;
                 actualizarBotones();
@@ -866,6 +947,8 @@
         estado.corridaActiva = true;
         estado.idActual = nuevo.id;
         estado.limites = nuevo.config;
+        estado.ultimoEstado = 'ejecutando';
+        if (nuevo.config) estado.configCorrida = Object.assign({}, nuevo.config);
 
         $('badgeId').textContent = nuevo.id || 'sin corrida';
         $('badgeEstado').textContent = 'ejecutando';
@@ -890,14 +973,18 @@
     function aplicarFin(datos) {
         if (!datos || typeof datos !== 'object') return;
 
+        const idCerrada = datos.id;
+        const estabaPendiente = estado.reinicioPendiente;
+        estado.reinicioPendiente = false;
         estado.corridaActiva = false;
         estado.idActual = datos.id || estado.idActual;
-        actualizarBotones();
 
         const estadoFinal = datos.estado || 'error';
+        estado.ultimoEstado = estadoFinal;
         $('badgeEstado').textContent = nombreEstado(estadoFinal);
         $('badgeEstado').className = 'estado-corrida ' + estadoFinal;
         $('cardEstado').textContent = nombreEstado(estadoFinal);
+        actualizarBotones();
 
         const tipo = estadoFinal === 'completada' ? 'exito'
             : (estadoFinal === 'error' ? 'error' : 'aviso');
@@ -908,11 +995,16 @@
         fetchJson('/api/resultados/' + encodeURIComponent(datos.id))
             .then((resultado) => {
                 if (estado.historico) return;
+                if (estado.idActual !== idCerrada) return;
                 actualizarTarjetasFinales(resultado);
                 actualizarBadgeLimites(resultado.config, resultado);
             })
             .catch(() => {
             });
+
+        if (estabaPendiente && estado.configCorrida) {
+            lanzarCorrida(estado.configCorrida);
+        }
     }
 
     async function cargarResultados() {
@@ -1063,6 +1155,7 @@
             $('badgeId').textContent = resultado.id;
             $('badgeEstado').textContent = nombreEstado(resultado.estado);
             $('badgeEstado').className = 'estado-corrida ' + resultado.estado;
+            actualizarBotones();
 
             const nota = $('notaHistorico');
             nota.innerHTML = 'Mostrando la corrida histórica <code>' +
@@ -1088,12 +1181,15 @@
             $('badgeEstado').textContent = 'ejecutando';
             $('badgeEstado').className = 'estado-corrida ejecutando';
             $('cardEstado').textContent = 'ejecutando';
+            estado.ultimoEstado = 'ejecutando';
         } else {
             $('badgeId').textContent = 'sin corrida';
             $('badgeEstado').textContent = 'inactiva';
             $('badgeEstado').className = 'estado-corrida';
+            estado.ultimoEstado = null;
             actualizarBadgeLimites(null, null);
         }
+        actualizarBotones();
     }
 
     function motivosNoComparables(corridas) {
@@ -1378,7 +1474,7 @@
 
             const selector = $('selEscenario');
             const valorPrevio = selector.value;
-            selector.innerHTML = '<option value="">personalizado</option>';
+            selector.innerHTML = '';
 
             for (const escenario of estado.escenarios) {
                 const opcion = document.createElement('option');
@@ -1386,7 +1482,12 @@
                 opcion.textContent = escenario.nombre;
                 selector.appendChild(opcion);
             }
-            selector.value = valorPrevio;
+
+            const existe = estado.escenarios.some((escenario) => escenario.id === valorPrevio);
+            const elegido = existe ? valorPrevio
+                : (estado.escenarios[0] ? estado.escenarios[0].id : '');
+            selector.value = elegido;
+            if (elegido) aplicarEscenario(elegido);
         } catch (error) {
             mostrarMensaje('No se pudieron cargar los escenarios: ' + error.message, 'error');
         }

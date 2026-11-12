@@ -311,6 +311,12 @@ main {
     align-items: center;
 }
 
+.acciones-vivo {
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--linea);
+}
+
 .fila {
     display: flex;
     flex-wrap: wrap;
