@@ -416,16 +416,14 @@ void instalarManejadores() {
 }
 
 bool verificarLimitesPropios(const ConfiguracionCorrida& config) {
-    if (config.limiteMemoriaMb <= 0 && config.limiteCpuSegundos <= 0) return true;
-
     const std::optional<LimitesProceso> limites =
         leerLimitesProceso(static_cast<int>(getpid()));
     if (!limites.has_value()) return false;
 
-    if (config.limiteMemoriaMb > 0) {
-        const long esperado = static_cast<long>(config.limiteMemoriaMb) * 1024L * 1024L;
-        if (limites->memoriaBytes != esperado) return false;
-    }
+    const long esperado =
+        static_cast<long>(techoMemoriaMb(config)) * 1024L * 1024L;
+    if (limites->memoriaBytes != esperado) return false;
+
     if (config.limiteCpuSegundos > 0) {
         if (limites->cpuSegundos != static_cast<long>(config.limiteCpuSegundos)) {
             return false;
@@ -443,7 +441,7 @@ void emitirInicio(const ConfiguracionCorrida& config, bool limitesOk) {
     escritor.campo("modeloHilos", textoModelo(config.modeloHilos));
     escritor.campo("carga", textoCarga(config.carga));
     escritor.campo("limiteMemoriaBytes",
-                   static_cast<long>(config.limiteMemoriaMb) * 1024L * 1024L);
+                   static_cast<long>(techoMemoriaMb(config)) * 1024L * 1024L);
     escritor.campo("limiteCpuSegundos", config.limiteCpuSegundos);
     escritor.campo("limitesOk", limitesOk);
     escritor.cerrarObjeto();
@@ -525,9 +523,7 @@ int ejecutarTrabajador(const ConfiguracionCorrida& config) {
     resultado.limiteMemoriaSolicitado =
         (config.limiteMemoriaMb > 0);
     resultado.limiteMemoriaAplicadoKb =
-        (config.limiteMemoriaMb > 0)
-            ? static_cast<long>(config.limiteMemoriaMb) * 1024L
-            : 0;
+        static_cast<long>(techoMemoriaMb(config)) * 1024L;
     resultado.limiteCpuSegundosSolicitado = (config.limiteCpuSegundos > 0);
     resultado.limiteCpuSegundosAplicado   =
         (config.limiteCpuSegundos > 0) ? config.limiteCpuSegundos : 0;
@@ -586,30 +582,23 @@ int ejecutarTrabajador(const ConfiguracionCorrida& config) {
     resultado.duracionMs = relojMonotonicoMs() - contexto.inicioMs;
 
     if (falloReserva || falloHilos) {
-        if (config.limiteMemoriaMb > 0) {
+        if (falloReserva) {
             resultado.estado = EstadoCorrida::LimiteMemoria;
-            if (falloReserva) {
-                resultado.mensaje =
-                    "No se pudo reservar toda la memoria pedida: el límite de "
-                    "espacio de direcciones (RLIMIT_AS) lo impidió. Reservado: " +
-                    std::to_string(resultado.memoriaReservadaMb) + " MB de " +
-                    std::to_string(config.memoriaMb) + " MB.";
-            } else {
-                resultado.mensaje =
-                    "No se pudieron crear todos los hilos dentro del límite de "
-                    "espacio de direcciones (RLIMIT_AS).";
-            }
+            resultado.mensaje =
+                "No se pudo reservar toda la memoria pedida: el techo de " +
+                std::to_string(techoMemoriaMb(config)) +
+                " MB (RLIMIT_AS) lo impidió. Reservado: " +
+                std::to_string(resultado.memoriaReservadaMb) + " MB de " +
+                std::to_string(config.memoriaMb) + " MB.";
+        } else if (config.limiteMemoriaMb > 0) {
+            resultado.estado = EstadoCorrida::LimiteMemoria;
+            resultado.mensaje =
+                "No se pudieron crear todos los hilos dentro del límite de "
+                "espacio de direcciones (RLIMIT_AS).";
         } else {
             resultado.estado = EstadoCorrida::Error;
-            if (falloReserva) {
-                resultado.mensaje =
-                    "No se pudo reservar la memoria de trabajo: mmap falló. "
-                    "Reservado: " + std::to_string(resultado.memoriaReservadaMb) +
-                    " MB de " + std::to_string(config.memoriaMb) + " MB.";
-            } else {
-                resultado.mensaje =
-                    "No se pudieron crear todos los hilos de la carga.";
-            }
+            resultado.mensaje =
+                "No se pudieron crear todos los hilos de la carga.";
         }
     } else if (g_agotoCpu != 0) {
         resultado.estado  = EstadoCorrida::LimiteCpu;

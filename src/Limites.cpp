@@ -21,8 +21,11 @@ constexpr long PERIODO_MS = 40;
 bool aplicarLimitesHijo(const ConfiguracionCorrida& config, int& errnoSalida) {
     errnoSalida = 0;
 
-    if (config.limiteMemoriaMb > 0) {
-        rlim_t bytes = static_cast<rlim_t>(config.limiteMemoriaMb) * 1024UL * 1024UL;
+    // El techo de memoria se aplica siempre: el pedido o, si no hay pedido,
+    // el máximo del programa (4096 MB).
+    {
+        const int techoMb = techoMemoriaMb(config);
+        rlim_t bytes = static_cast<rlim_t>(techoMb) * 1024UL * 1024UL;
         struct rlimit limite;
         limite.rlim_cur = bytes;
         limite.rlim_max = bytes;
@@ -64,10 +67,9 @@ LimitesVerificados verificarLimites(int pid, const ConfiguracionCorrida& config)
     bool memoriaOk = true;
     bool cpuOk     = true;
 
-    if (config.limiteMemoriaMb > 0) {
-        long esperadoKb = static_cast<long>(config.limiteMemoriaMb) * 1024L;
-        memoriaOk = resultado.memoriaKb == esperadoKb;
-    }
+    const long esperadoKb = static_cast<long>(techoMemoriaMb(config)) * 1024L;
+    memoriaOk = resultado.memoriaKb == esperadoKb;
+
     if (config.limiteCpuSegundos > 0) {
         cpuOk = resultado.cpuSegundos == config.limiteCpuSegundos;
     }

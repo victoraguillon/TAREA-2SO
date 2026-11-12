@@ -85,27 +85,27 @@ std::vector<Escenario> escenarios() {
         Escenario escenario;
         escenario.id          = "presion-memoria";
         escenario.nombre      = "Prueba 3 · Presión de memoria";
-        escenario.descripcion = "Se piden 64, 128 y 256 MB con un límite RLIMIT_AS de 192 MB. "
-                                "Las dos primeras completan; la tercera choca contra el límite y "
-                                "lo informa en vez de fallar.";
+        escenario.descripcion = "Se piden 1024, 2048 y 4096 MB bajo un techo RLIMIT_AS de 3700 MB. "
+                                "Las dos primeras completan; la tercera choca contra el techo, reserva "
+                                "casi los 3700 MB y lo informa en vez de fallar.";
         escenario.pasos = {
-            "Ejecutar la variante de 64 MB y anotar RSS y VA.",
-            "Repetir con 128 MB.",
-            "Ejecutar 256 MB: debe terminar en estado limite_memoria.",
+            "Ejecutar la variante de 1024 MB y anotar RSS y VA.",
+            "Repetir con 2048 MB.",
+            "Ejecutar 4096 MB: debe terminar en estado limite_memoria con una reserva cercana a 3700 MB.",
             "Observar swap del proceso, swap del sistema y pswpin/pswpout."
         };
 
         ConfiguracionCorrida base;
         base.carga           = ModoCarga::Memoria;
         base.modeloHilos     = ModeloHilos::Nativos;
-        base.hilos           = 2;
-        base.memoriaMb       = 64;
-        base.pasadas         = 10;
+        base.hilos           = 4;
+        base.memoriaMb       = 1024;
+        base.pasadas         = 5;
         base.modoFin         = ModoFin::Pasadas;
-        base.limiteMemoriaMb = 192;
+        base.limiteMemoriaMb = 3700;
         escenario.base       = base;
 
-        for (int memoria : {64, 128, 256}) {
+        for (int memoria : {1024, 2048, 4096}) {
             ConfiguracionCorrida config = base;
             config.memoriaMb            = memoria;
             escenario.variantes.push_back(

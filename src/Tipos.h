@@ -26,9 +26,9 @@ enum class EstadoCorrida {
 
 enum class NivelCapacidad { Disponible, Aproximado, NoDisponible };
 
-// Tope absoluto de memoria del programa y colchón que se deja libre al sistema.
-constexpr int  MEMORIA_MAXIMA_MB = 4096;
-constexpr long MARGEN_MEMORIA_KB = 1024L * 1024L;  // 1 GiB
+// Techo único de memoria del programa. No hay sub-límites: este número manda
+// tanto para lo que se pide (memoriaMb) como para RLIMIT_AS (limiteMemoriaMb).
+constexpr int MEMORIA_MAXIMA_MB = 4096;
 
 struct ConfiguracionCorrida {
     ModoCarga           carga               = ModoCarga::Memoria;
@@ -44,6 +44,13 @@ struct ConfiguracionCorrida {
     int                 limiteCpuSegundos   = 0;
     int                 limiteCpuPorcentaje = 100;
 };
+
+// Techo efectivo de memoria: el límite pedido o, si no se pide ninguno (0),
+// el máximo del programa. Se aplica siempre como RLIMIT_AS.
+inline int techoMemoriaMb(const ConfiguracionCorrida& config) {
+    return config.limiteMemoriaMb > 0 ? config.limiteMemoriaMb
+                                      : MEMORIA_MAXIMA_MB;
+}
 
 struct Muestra {
     long   msDesdeInicio      = 0;

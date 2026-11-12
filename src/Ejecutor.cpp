@@ -817,8 +817,9 @@ ResultadoCorrida Ejecutor::ejecutar() {
         }
     }
 
-    bool hayLimitePedido =
-        (config.limiteMemoriaMb > 0 || config.limiteCpuSegundos > 0);
+    // El techo de memoria se aplica siempre (pedido o 4096 MB), así que
+    // siempre hay algo que verificar.
+    bool hayLimitePedido = true;
     bool limitesVerificados = false;
     long memoriaVerificadaKb = 0;
     long cpuVerificadoSegundos = 0;
@@ -838,14 +839,13 @@ ResultadoCorrida Ejecutor::ejecutar() {
 
         if (hayVerificacionSupervisor && verificados.ok) {
             limitesVerificados = true;
-            if (config.limiteMemoriaMb > 0) memoriaVerificadaKb = verificados.memoriaKb;
+            memoriaVerificadaKb = verificados.memoriaKb;
             if (config.limiteCpuSegundos > 0) cpuVerificadoSegundos = verificados.cpuSegundos;
         } else if (hayReporteTrabajador && trabajadorOk) {
 
             limitesVerificados = true;
-            if (config.limiteMemoriaMb > 0) {
-                memoriaVerificadaKb = static_cast<long>(config.limiteMemoriaMb) * 1024L;
-            }
+            memoriaVerificadaKb =
+                static_cast<long>(techoMemoriaMb(config)) * 1024L;
             if (config.limiteCpuSegundos > 0) {
                 cpuVerificadoSegundos = config.limiteCpuSegundos;
             }
@@ -857,9 +857,9 @@ ResultadoCorrida Ejecutor::ejecutar() {
     resultado.limiteCpuSegundosSolicitado = (config.limiteCpuSegundos > 0);
 
     resultado.limiteMemoriaAplicadoKb =
-        (limitesVerificados && config.limiteMemoriaMb > 0) ? memoriaVerificadaKb : 0;
+        limitesVerificados ? memoriaVerificadaKb : 0;
     resultado.limiteMemoriaVerificadoKb =
-        (limitesVerificados && config.limiteMemoriaMb > 0) ? memoriaVerificadaKb : 0;
+        limitesVerificados ? memoriaVerificadaKb : 0;
     resultado.limiteCpuSegundosAplicado =
         (limitesVerificados && config.limiteCpuSegundos > 0) ? cpuVerificadoSegundos : 0;
     resultado.limiteCpuSegundosVerificado =

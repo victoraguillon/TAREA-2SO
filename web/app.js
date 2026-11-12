@@ -566,7 +566,7 @@
         const limiteMemoria = numeroDe('inpLimiteMemoria', 0);
 
         if (limiteMemoria !== 0 && (limiteMemoria < 8 || limiteMemoria > 4096)) {
-            mostrarMensaje('El límite de memoria debe ser 0 (sin límite) u 8..4096 MB.', 'aviso');
+            mostrarMensaje('El límite de memoria debe ser 0 (techo general de 4096 MB) u 8..4096 MB.', 'aviso');
             return null;
         }
 

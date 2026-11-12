@@ -404,23 +404,6 @@ std::string Api::validarConfiguracion(const ConfiguracionCorrida& config,
         return "porcentaje de CPU fuera de rango (1..100).";
     }
 
-    if (config.carga == ModoCarga::Memoria) {
-        if (std::optional<Meminfo> memoria = leerMeminfo()) {
-            if (memoria->memDisponibleKb > 0) {
-                const long topeKb = memoria->memDisponibleKb - MARGEN_MEMORIA_KB;
-                const long pedidoKb =
-                    static_cast<long>(config.memoriaMb) * 1024L +
-                    static_cast<long>(config.hilos) * 512L;
-                if (pedidoKb > topeKb) {
-                    const long maximoSeguroMb = (topeKb > 0) ? topeKb / 1024 : 0;
-                    return "memoria solicitada excede el máximo seguro de " +
-                           std::to_string(maximoSeguroMb) +
-                           " MB (se reserva 1 GB para el sistema).";
-                }
-            }
-        }
-    }
-
     return std::string();
 }
 

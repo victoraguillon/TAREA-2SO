@@ -75,13 +75,14 @@ Botones principales: **Iniciar**, **Detener** (termina en menos de 3 s) y
 | `duracionSeg` | 1..180 | Duración objetivo en modo `duracion` |
 | `sincronizacion` | `ninguna`, `mutex`, `atomico` | Acceso al contador compartido |
 | `iteraciones` | 1..100000000 | Iteraciones por hilo en la carga de sincronización |
-| `limiteMemoriaMb` | 0 u 8..4096 | `RLIMIT_AS` del trabajador (0 = sin límite) |
+| `limiteMemoriaMb` | 0 u 8..4096 | Techo `RLIMIT_AS` del trabajador (0 = techo general de 4096 MB) |
 | `limiteCpuSegundos` | 0..600 | `RLIMIT_CPU` en segundos de CPU (0 = sin límite) |
 | `limiteCpuPorcentaje` | 1..100 | Cuota aproximada de CPU por `SIGSTOP`/`SIGCONT` |
 
-La API valida los rangos y rechaza con HTTP 400 y mensaje en español. Además, la
-memoria pedida debe dejar al menos 1 GB libre para el sistema, contando las
-pilas de los hilos. El máximo absoluto es 4096 MB.
+La API valida los rangos y rechaza con HTTP 400 y mensaje en español. Hay un
+único techo de memoria: **4096 MB**. Ese valor manda para lo que se pide
+(`memoriaMb`) y se aplica siempre como `RLIMIT_AS`; si `limiteMemoriaMb` es 0,
+se usa el techo general de 4096 MB.
 
 ## 4. Qué mide cada métrica
 
@@ -151,9 +152,10 @@ Los escenarios de la pestaña **Configurar** precargan estas pruebas:
    Se espera que la duración baje y que la CPU supere el 100 % al crecer N.
 2. **Límite de CPU (P2)**: 64 MB durante 5 s con cuota 100 %, 50 % y 25 %.
    Se espera que las pasadas completadas bajen con la cuota.
-3. **Presión de memoria (P3)**: pedir 256 MB con `RLIMIT_AS` de 192 MB.
-   Se espera estado `limite_memoria`, reserva parcial (~176 MB) y límite
-   verificado; con 128 MB bajo el mismo límite, la corrida completa.
+3. **Presión de memoria (P3)**: pedir 1024, 2048 y 4096 MB con un techo
+   `RLIMIT_AS` de 3700 MB. Las dos primeras completan (RSS ≈ 1 y 2 GB); la de
+   4096 choca contra el techo y termina en `limite_memoria` con una reserva
+   parcial de 3680 MB.
 4. **Sincronización (P4)**: 4 hilos × 1 000 000 iteraciones con `ninguna`,
    `mutex` y `atomico`. Se esperan actualizaciones perdidas solo en `ninguna`.
 
@@ -163,7 +165,8 @@ Resultados observados en este equipo (16 núcleos, 7,6 GB de RAM, 2 GB de swap):
 |---|---|
 | P1 1/2/4/8 hilos | 6046 / 3024 / 1588 / 884 ms; CPU 99 / 196 / 385 / 739 % |
 | P2 100/50/25 % | 30,4 / 15,0 / 6,9 pasadas en 5 s; CPU 99,3 / 49,3 / 24,6 % |
-| P3 256 MB con límite 192 MB | `limite_memoria`, reservado 176 MB, VA 187 MB |
+| P3 1024/2048 MB bajo techo 3700 | `completada`, RSS 1029 / 2053 MB, VA 1033 / 2057 MB |
+| P3 4096 MB bajo techo 3700 | `limite_memoria`, reservado 3680 MB, VA 3687 MB |
 | P4 ninguna / mutex / atómico | 2 726 564 pérdidas / 0 / 0 |
 | Tareas 4 × 128 MB × 20 pasadas | `Threads: 1`, 5124 cambios de contexto, 6537 ms |
 
